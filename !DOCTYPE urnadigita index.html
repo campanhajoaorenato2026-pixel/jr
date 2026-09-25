@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Simulador de Votação Completo - Eleições 2026 DF</title>
+  <style>
+    :root {
+      --urna-bg: #dcd7ce;
+      --urna-border: #99948a;
+      --teclado-bg: #262626;
+      --tela-bg: #fbfbf0;
+      --cor-confirma: #1f8a38;
+      --cor-corrige: #e66a00;
+      --cor-branco: #ffffff;
+      --cor-colinha: #fffdf2;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      background: radial-gradient(circle at center, #2e3033 0%, #151618 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 10px;
+      padding-top: max(10px, env(safe-area-inset-top));
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+      padding-left: max(10px, env(safe-area-inset-left));
+      padding-right: max(10px, env(safe-area-inset-right));
+    }
+
+    /* Cabeçalho */
+    .cabecalho-topo {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 12px;
+      margin-bottom: 8px;
+      color: #f0f0f0;
+    }
+
+    .identificacao {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .bandeira-icone {
+      width: 26px;
+      height: 18px;
+      background: #009c3b;
+      border-radius: 3px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    }
+
+    .bandeira-icone::before {
+      content: "";
+      width: 16px;
+      height: 11px;
+      background: #ffdf00;
+      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    }
+
+    .bandeira-icone::after {
+      content: "";
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: #002776;
+      border-radius: 50%;
+    }
+
+    .titulo-topo {
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+    }
+
+    .subtitulo-topo {
+      font-size: 11px;
+      color: #bbb;
+    }
+
+    .badge-etapas {
+      background: #0d6efd;
+      color: #fff;
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    /* Colinha Eleitoral Interativa */
+    .colinha-card {
+      width: 100%;
+      max-width: 900px;
+      background: var(--cor-colinha);
+      border: 1px dashed #b5a642;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .colinha-cabecalho {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: #4a3e00;
+      text-transform: uppercase;
+      border-bottom: 1px dotted #ccc;
+      padding-bottom: 4px;
+    }
+
+    .colinha-itens {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 6px;
+    }
+
+    .colinha-item {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 5px 8px;
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .colinha-item.ativo {
+      background: #fff8d6;
+      border-color: #e67300;
+      box-shadow: 0 0 0 2px #e67300;
+    }
+
+    .colinha-cargo {
+      font-size: 9px;
+      color: #666;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .colinha-candidato {
+      font-size: 12px;
+      font-weight: 800;
+      color: #111;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .colinha-num {
+      font-size: 13px;
+      font-weight: 900;
+      color: #007a33;
+    }
+
+    /* Chassi da Urna */
+    .urna-chassi {
+      background: linear-gradient(135deg, #e4e0d7 0%, #cac4b8 100%);
+      width: 100%;
+      max-width: 900px;
+      min-height: 440px;
+      display: flex;
+      flex-direction: row;
+      border-radius: 14px;
+      padding: 16px;
+      gap: 16px;
+      border: 2px solid var(--urna-border);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), inset 0 2px 3px rgba(255, 255, 255, 0.8);
+    }
+
+    /* Moldura e Visor LCD */
+    .moldura-tela {
+      background: #181818;
+      border-radius: 8px;
+      padding: 8px;
+      flex: 1.35;
+      display: flex;
+      box-shadow: inset 0 3px 8px rgba(0,0,0,0.8);
+      min-height: 380px;
+    }
+
+    .urna-tela {
+      background-color: var(--tela-bg);
+      border-radius: 4px;
+      flex: 1;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      border: 1px solid #777;
+      box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .topo-cargo {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #333;
+    }
+
+    .cargo-nome {
+      font-size: 18px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: #000;
+      margin: 4px 0 8px 0;
+    }
+
+    .linha-voto {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 6px 0;
+    }
+
+    .rotulo-num {
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .caixa-digito {
+      width: 32px;
+      height: 42px;
+      border: 2px solid #222;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 26px;
+      font-weight: 900;
+      background: #fff;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+    }
+
+    .caixa-digito.ativa {
+      animation: piscaCursor 0.75s infinite;
+    }
+
+    @keyframes piscaCursor {
+      0%, 49% { border-color: #000; }
+      50%, 100% { border-color: transparent; }
+    }
+
+    .info-candidato {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      min-height: 120px;
+      margin: 8px 0;
+    }
+
+    .dados-texto {
+      font-size: 13px;
+      line-height: 1.45;
+      color: #111;
+    }
+
+    .dados-texto strong {
+      display: inline-block;
+      min-width: 65px;
+      color: #333;
+    }
+
+    .foto-box {
+      width: 95px;
+      height: 120px;
+      border: 2px solid #333;
+      background: #e4e2d8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.15);
+    }
+
+    .foto-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .rodape-instrucoes {
+      border-top: 2px solid #222;
+      padding-top: 6px;
+      font-size: 10px;
+      color: #222;
+      line-height: 1.35;
+    }
+
+    /* Telas de Transição e Fim */
+    .tela-overlay {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      min-height: 320px;
+      text-align: center;
+      padding: 10px;
+    }
+
+    .texto-gravando {
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      animation: piscaGravando 0.4s infinite alternate;
+    }
+
+    @keyframes piscaGravando {
+      from { opacity: 0.3; }
+      to { opacity: 1; }
+    }
+
+    .texto-fim {
+      font-size: 56px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: #000;
+      line-height: 1;
+    }
+
+    .bloco-propostas {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+      width: 100%;
+      max-width: 350px;
+    }
+
+    .btn-cta-principal {
+      background: linear-gradient(180deg, #ff9900 0%, #e67300 100%);
+      color: #111111;
+      padding: 13px 18px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 900;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 12px rgba(230, 115, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid #c95e00;
+      animation: pulsarBotao 2s infinite ease-in-out;
+    }
+
+    @keyframes pulsarBotao {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+
+    .btn-propostas {
+      background: linear-gradient(180deg, #0d6efd 0%, #084298 100%);
+      color: #ffffff;
+      padding: 11px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 12px;
+      box-shadow: 0 4px 10px rgba(13, 110, 253, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-zap {
+      background: #25d366;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 11px;
+      box-shadow: 0 3px 8px rgba(37, 211, 102, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-reiniciar {
+      background: transparent;
+      border: 1px solid #777;
+      color: #444;
+      padding: 6px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    /* Teclado */
+    .urna-teclado {
+      background-color: var(--teclado-bg);
+      border-radius: 8px;
+      flex: 1;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: inset 0 3px 6px rgba(0,0,0,0.6);
+    }
+
+    .grid-numeros {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+    }
+
+    .btn-num {
+      height: 48px;
+      background: linear-gradient(180deg, #383838 0%, #1c1c1c 100%);
+      color: #f5f5f5;
+      font-size: 22px;
+      font-weight: bold;
+      border: 1px solid #000;
+      border-radius: 5px;
+      box-shadow: 0 5px 0 #111, 0 6px 6px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .btn-num[data-tecla="5"]::after {
+      content: "••";
+      font-size: 8px;
+      line-height: 6px;
+      color: #777;
+      position: absolute;
+      bottom: 4px;
+      letter-spacing: 1px;
+    }
+
+    .btn-num:active {
+      transform: translateY(3px);
+      box-shadow: 0 2px 0 #111;
+    }
+
+    .acoes-botoes {
+      display: flex;
+      gap: 7px;
+      margin-top: 10px;
+      align-items: flex-end;
+    }
+
+    .btn-acao {
+      flex: 1;
+      height: 46px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      border: 1px solid #111;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-branco {
+      background: linear-gradient(180deg, #ffffff 0%, #dcdcdc 100%);
+      color: #111;
+      box-shadow: 0 5px 0 #999;
+    }
+
+    .btn-corrige {
+      background: linear-gradient(180deg, #ff7a18 0%, var(--cor-corrige) 100%);
+      color: #111;
+      box-shadow: 0 5px 0 #8f3800;
+    }
+
+    .btn-confirma {
+      background: linear-gradient(180deg, #28a745 0%, var(--cor-confirma) 100%);
+      color: #ffffff;
+      height: 54px;
+      font-size: 12px;
+      box-shadow: 0 5px 0 #0b4e1f;
+    }
+
+    .btn-acao:active {
+      transform: translateY(3px);
+      box-shadow: 0 2px 0 #000;
+    }
+
+    /* Responsividade Mobile (Vertical) */
+    @media (max-width: 768px) {
+      body {
+        padding: 6px;
+      }
+      .colinha-itens {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .urna-chassi {
+        flex-direction: column;
+        padding: 8px;
+        gap: 8px;
+        min-height: auto;
+      }
+      .moldura-tela {
+        min-height: 290px;
+        padding: 6px;
+      }
+      .cargo-nome {
+        font-size: 16px;
+      }
+      .caixa-digito {
+        width: 28px;
+        height: 38px;
+        font-size: 22px;
+      }
+      .foto-box {
+        width: 80px;
+        height: 100px;
+      }
+      .urna-teclado {
+        padding: 8px;
+      }
+      .btn-num {
+        height: 48px;
+        font-size: 22px;
+      }
+      .btn-acao {
+        height: 46px;
+      }
+      .btn-confirma {
+        height: 52px;
+      }
+    }
+
+    /* Responsividade Landscape Compacto */
+    @media (orientation: landscape) and (max-height: 580px) {
+      body {
+        padding: 4px;
+      }
+      .cabecalho-topo {
+        padding: 2px 8px;
+        margin-bottom: 2px;
+      }
+      .colinha-card {
+        padding: 4px 8px;
+        margin-bottom: 4px;
+      }
+      .colinha-itens {
+        grid-template-columns: repeat(6, 1fr);
+      }
+      .urna-chassi {
+        flex-direction: row;
+        padding: 6px;
+        gap: 8px;
+        min-height: 270px;
+      }
+      .moldura-tela {
+        min-height: 100%;
+        padding: 6px;
+      }
+      .foto-box {
+        width: 70px;
+        height: 90px;
+      }
+      .btn-num {
+        height: 35px;
+        font-size: 17px;
+      }
+      .btn-acao {
+        height: 35px;
+        font-size: 10px;
+      }
+      .btn-confirma {
+        height: 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cabeçalho Oficial -->
+  <header class="cabecalho-topo">
+    <div class="identificacao">
+      <div class="bandeira-icone"></div>
+      <div>
+        <div class="titulo-topo">ELEIÇÕES 2026 • DISTRITO FEDERAL</div>
+        <div class="subtitulo-topo">Simulador Eleitoral Completo</div>
+      </div>
+    </div>
+    <div class="badge-etapas" id="indicadorEtapa">Voto 1 de 6</div>
+  </header>
+
+  <!-- Card da Colinha Eleitoral -->
+  <section class="colinha-card">
+    <div class="colinha-cabecalho">
+      <span>📝 Sua Colinha Eleitoral (DF)</span>
+      <span style="font-size:10px; color:#666; font-weight:normal;">Toque para preencher rápido</span>
+    </div>
+    <div class="colinha-itens" id="containerColinha"></div>
+  </section>
+
+  <!-- Chassi da Urna -->
+  <main class="urna-chassi">
+    <!-- Visor LCD -->
+    <div class="moldura-tela">
+      <div class="urna-tela" id="telaUrna">
+        
+        <!-- Painel de Voto Ativo -->
+        <div id="painelVoto" style="height:100%; display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div class="topo-cargo">SEU VOTO PARA</div>
+            <div class="cargo-nome" id="labelCargo">DEPUTADO DISTRITAL</div>
+            <div class="linha-voto">
+              <span class="rotulo-num">Número:</span>
+              <div id="caixasNumero" style="display:flex; gap:5px;"></div>
+            </div>
+          </div>
+
+          <div class="info-candidato">
+            <div class="dados-texto" id="dadosCandidato"></div>
+            <div class="foto-box" id="boxFoto">
+              <span style="font-size:10px; color:#888;">FOTO</span>
+            </div>
+          </div>
+
+          <div class="rodape-instrucoes">
+            Aperte a tecla:<br>
+            <strong>VERDE</strong> para CONFIRMAR este voto<br>
+            <strong>LARANJA</strong> para REINICIAR este voto
+          </div>
+        </div>
+
+        <!-- Tela de Gravando -->
+        <div class="tela-overlay" id="telaGravando">
+          <div class="texto-gravando">GRAVANDO...</div>
+        </div>
+
+        <!-- Tela de Fim & Propostas -->
+        <div class="tela-overlay" id="telaFim">
+          <div class="texto-fim">FIM</div>
+          <div style="font-size:13px; font-weight:bold; color:#1a1a1a; margin-top:4px;">
+            VOTAÇÃO CONCLUÍDA COM SUCESSO!
+          </div>
+
+          <div class="bloco-propostas">
+            <!-- CTA Principal do Site de Propostas -->
+            <a href="https://propostasdepdistritaljoaorenato.online/" target="_blank" class="btn-cta-principal" id="btnCtaSite">
+              ⭐ Conheça as Propostas de João Renato
+            </a>
+
+            <!-- Link de Informações Eleitorais -->
+            <a href="https://propostasdepdistritaljoaorenato.online/informacoes-eleitorais" target="_blank" class="btn-propostas" id="linkPropostas">
+              📋 Informações Eleitorais da Candidatura
+            </a>
+
+            <!-- Compartilhamento WhatsApp -->
+            <a href="#" target="_blank" class="btn-zap" id="btnZap">
+              🟢 Compartilhar Colinha no WhatsApp
+            </a>
+
+            <button class="btn-reiniciar" onclick="reiniciarTudo()">Simular Nova Votação</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Teclado Numérico -->
+    <div class="urna-teclado">
+      <div class="grid-numeros">
+        <button class="btn-num" data-tecla="1">1</button>
+        <button class="btn-num" data-tecla="2">2</button>
+        <button class="btn-num" data-tecla="3">3</button>
+        <button class="btn-num" data-tecla="4">4</button>
+        <button class="btn-num" data-tecla="5">5</button>
+        <button class="btn-num" data-tecla="6">6</button>
+        <button class="btn-num" data-tecla="7">7</button>
+        <button class="btn-num" data-tecla="8">8</button>
+        <button class="btn-num" data-tecla="9">9</button>
+        <div style="grid-column: 2 / 3;">
+          <button class="btn-num" style="width:100%;" data-tecla="0">0</button>
+        </div>
+      </div>
+
+      <div class="acoes-botoes">
+        <button class="btn-acao btn-branco" data-acao="branco">Branco</button>
+        <button class="btn-acao btn-corrige" data-acao="corrige">Corrige</button>
+        <button class="btn-acao btn-confirma" data-acao="confirma">Confirma</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      /* =========================================================
+         1. SEQUÊNCIA DE VOTAÇÃO: JOÃO RENATO EM PRIMEIRO
+         ========================================================= */
+      const ETAPAS = [
+        {
+          cargo: "DEPUTADO DISTRITAL",
+          digitos: 5,
+          candidatos: {
+            "22422": {
+              nome: "POLICIAL JOÃO RENATO",
+              partido: "PL",
+              foto: "https://propostasdepdistritaljoaorenato.online/__l5e/assets-v1/7630ff73-45cf-4ef4-98b9-a18fddf58de6/candidato-joao-renato.jpg"
+            }
+          },
+          colinha: { cargo: "Dep. Distrital", nome: "João Renato", numero: "22422" }
+        },
+        {
+          cargo: "DEPUTADO FEDERAL",
+          digitos: 4,
+          candidatos: {
+            "2233": {
+              nome: "THIAGO MANZONI",
+              partido: "PL",
+              foto: "https://propostasdepdistritaljoaorenato.online/__l5e/assets-v1/6d695585-ff58-4f04-8e01-dd34984d89ee/candidato-thiago-manzoni.jpg"
+            }
+          },
+          colinha: { cargo: "Dep. Federal", nome: "Thiago Manzoni", numero: "2233" }
+        },
+        {
+          cargo: "SENADOR (1ª VAGA)",
+          digitos: 3,
+          candidatos: {
+            "223": {
+              nome: "BIA KICIS",
+              partido: "PL",
+              foto: "https://propostasdepdistritaljoaorenato.online/__l5e/assets-v1/9706b33f-1a10-4ebd-ab78-4f09a0dd3b6b/candidata-bia-kicis.jpg"
+            }
+          },
+          colinha: { cargo: "Senador 1", nome: "Bia Kicis", numero: "223" }
+        },
+        {
+          cargo: "SENADORA (2ª VAGA)",
+          digitos: 3,
+          candidatos: {
+            "222": {
+              nome: "MICHELLE BOLSONARO",
+              partido: "PL",
+              foto: "https://propostasdepdistritaljoaorenato.online/__l5e/assets-v1/dec4300e-0fd3-47d0-93c8-a09e51bbf796/candidata-michelle-bolsonaro.jpg"
+            }
+          },
+          colinha: { cargo: "Senador 2", nome: "Michelle Bolsonaro", numero: "222" }
+        },
+        {
+          cargo: "GOVERNADORA",
+          digitos: 2,
+          candidatos: {
+            "11": {
+              nome: "CELINA LEÃO",
+              partido: "PP",
+              foto: "https://propostasdepdistritaljoaorenato.online/__l5e/assets-v1/63130deb-dfc1-4a3c-853d-4f9bd6df2cc2/candidata-celina-leao.jpg"
+            }
+          },
+          colinha: { cargo: "Governador", nome: "Celina Leão", numero: "11" }
+        },
+        {
+          cargo: "PRESIDENTE",
+          digitos: 2,
+          candidatos: {
+            "22": {
+              nome: "FLÁVIO BOLSONARO",
+              partido: "PL",
+              foto: "https://propostasdepdistritaljoaorenato.online/__l5e/assets-v1/a9a0fc72-b4c1-4b2f-b788-5de996a682cf/candidato-flavio-bolsonaro.jpg"
+            }
+          },
+          colinha: { cargo: "Presidente", nome: "Flávio Bolsonaro", numero: "22" }
+        }
+      ];
+
+      const LINKS = {
+        principal: "https://propostasdepdistritaljoaorenato.online/",
+        informacoes: "https://propostasdepdistritaljoaorenato.online/informacoes-eleitorais",
+        zap: "Confira a colinha com João Renato em primeiro e veja as propostas para o DF: https://propostasdepdistritaljoaorenato.online/"
+      };
+
+      /* =========================================================
+         2. TRACKING E ANALYTICS
+         ========================================================= */
+      window.dataLayer = window.dataLayer || [];
+
+      function track(evento, parametros = {}) {
+        const payload = {
+          event: evento,
+          eleicao: "Eleicoes_2026_DF",
+          etapa_atual: etapaAtual + 1,
+          timestamp: new Date().toISOString(),
+          ...parametros
+        };
+        window.dataLayer.push(payload);
+        try { console.log("[Analytics]:", payload); } catch(e){}
+      }
+
+      function vibrar(ms = 25) {
+        if ("vibrate" in navigator) {
+          try { navigator.vibrate(ms); } catch(e){}
+        }
+      }
+
+      /* =========================================================
+         3. SÍNTESE DE ÁUDIO
+         ========================================================= */
+      let audioCtx = null;
+
+      function initAudio() {
+        try {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (audioCtx.state === "suspended") audioCtx.resume();
+        } catch(e){}
+      }
+
+      function somClique() {
+        initAudio();
+        if (!audioCtx) return;
+        try {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(650, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.04);
+        } catch(e){}
+      }
+
+      function somConfirmaParcial() {
+        initAudio();
+        if (!audioCtx) return;
+        try {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(1400, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.25);
+        } catch(e){}
+      }
+
+      function somUrnaFim() {
+        initAudio();
+        if (!audioCtx) return;
+        try {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(1400, audioCtx.currentTime);
+          osc.frequency.setValueAtTime(1850, audioCtx.currentTime + 0.16);
+          gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.9);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.9);
+        } catch(e){}
+      }
+
+      /* =========================================================
+         4. LÓGICA DO QUIZ MULTIETAPAS
+         ========================================================= */
+      let etapaAtual = 0;
+      let numeroAtual = "";
+      let emBranco = false;
+      const votosRegistrados = [];
+
+      const labelCargo = document.getElementById("labelCargo");
+      const indicadorEtapa = document.getElementById("indicadorEtapa");
+      const caixasNumero = document.getElementById("caixasNumero");
+      const dadosCandidato = document.getElementById("dadosCandidato");
+      const boxFoto = document.getElementById("boxFoto");
+      const containerColinha = document.getElementById("containerColinha");
+      const painelVoto = document.getElementById("painelVoto");
+      const telaGravando = document.getElementById("telaGravando");
+      const telaFim = document.getElementById("telaFim");
+      const btnCtaSite = document.getElementById("btnCtaSite");
+      const linkPropostas = document.getElementById("linkPropostas");
+      const btnZap = document.getElementById("btnZap");
+
+      if (btnCtaSite) btnCtaSite.href = LINKS.principal;
+      if (linkPropostas) linkPropostas.href = LINKS.informacoes;
+      if (btnZap) btnZap.href = "https://api.whatsapp.com/send?text=" + encodeURIComponent(LINKS.zap);
+
+      function renderizarColinha() {
+        if (!containerColinha) return;
+        containerColinha.innerHTML = "";
+        ETAPAS.forEach((etapa, idx) => {
+          const item = document.createElement("div");
+          item.className = "colinha-item" + (idx === etapaAtual ? " ativo" : "");
+          item.innerHTML = `
+            <span class="colinha-cargo">${etapa.colinha.cargo}</span>
+            <span class="colinha-candidato">${etapa.colinha.nome}</span>
+            <span class="colinha-num">${etapa.colinha.numero}</span>
+          `;
+          item.addEventListener("click", () => {
+            if (idx === etapaAtual) {
+              preencherColinha(etapa.colinha.numero);
+            }
+          });
+          containerColinha.appendChild(item);
+        });
+      }
+
+      function preencherColinha(numero) {
+        corrigir();
+        for (let char of numero) {
+          digitar(char);
+        }
+      }
+
+      function carregarEtapa() {
+        const etapa = ETAPAS[etapaAtual];
+        numeroAtual = "";
+        emBranco = false;
+
+        if (labelCargo) labelCargo.innerText = etapa.cargo;
+        if (indicadorEtapa) indicadorEtapa.innerText = `Voto ${etapaAtual + 1} de ${ETAPAS.length}`;
+        if (dadosCandidato) dadosCandidato.innerHTML = "";
+        if (boxFoto) boxFoto.innerHTML = `<span style="font-size:10px; color:#888;">FOTO</span>`;
+
+        renderizarColinha();
+        renderizarCaixas();
+      }
+
+      function renderizarCaixas() {
+        if (!caixasNumero) return;
+        const etapa = ETAPAS[etapaAtual];
+        caixasNumero.innerHTML = "";
+        for (let i = 0; i < etapa.digitos; i++) {
+          const d = document.createElement("div");
+          d.className = "caixa-digito";
+          if (i === numeroAtual.length && !emBranco) {
+            d.classList.add("ativa");
+          }
+          d.innerText = numeroAtual[i] || "";
+          caixasNumero.appendChild(d);
+        }
+      }
+
+      function digitar(num) {
+        somClique();
+        vibrar(20);
+        if (emBranco) return;
+
+        const etapa = ETAPAS[etapaAtual];
+        if (numeroAtual.length < etapa.digitos) {
+          numeroAtual += num;
+          renderizarCaixas();
+          track("urna_digito", { digito: num, acumulado: numeroAtual, cargo: etapa.cargo });
+          atualizarTelaCandidato();
+        }
+      }
+
+      function atualizarTelaCandidato() {
+        if (!dadosCandidato || !boxFoto) return;
+        const etapa = ETAPAS[etapaAtual];
+
+        if (numeroAtual.length === etapa.digitos) {
+          const cand = etapa.candidatos[numeroAtual];
+          if (cand) {
+            dadosCandidato.innerHTML = `
+              <p><strong>Nome:</strong> ${cand.nome}</p>
+              <p><strong>Partido:</strong> ${cand.partido}</p>
+            `;
+            boxFoto.innerHTML = `<img src="${cand.foto}" alt="${cand.nome}" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'95\\' height=\\'120\\' fill=\\'%23555\\' viewBox=\\'0 0 16 16\\'><path d=\\'M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z\\'/></svg>';">`;
+          } else {
+            dadosCandidato.innerHTML = `<p style="color:#b7094c; font-weight:bold; margin-top:8px;">NÚMERO ERRADO<br>VOTO NULO</p>`;
+            boxFoto.innerHTML = `<span style="font-size:10px; color:#888;">NULO</span>`;
+          }
+        }
+      }
+
+      function votarBranco() {
+        somClique();
+        vibrar(25);
+        if (numeroAtual.length === 0) {
+          emBranco = true;
+          if (caixasNumero) caixasNumero.innerHTML = "";
+          if (dadosCandidato) dadosCandidato.innerHTML = `<h3 style="margin-top:14px;">VOTO EM BRANCO</h3>`;
+          if (boxFoto) boxFoto.innerHTML = "";
+          track("urna_branco", { cargo: ETAPAS[etapaAtual].cargo });
+        }
+      }
+
+      function corrigir() {
+        somClique();
+        vibrar(35);
+        track("urna_corrige", { cancelado: numeroAtual, cargo: ETAPAS[etapaAtual].cargo });
+        numeroAtual = "";
+        emBranco = false;
+        if (dadosCandidato) dadosCandidato.innerHTML = "";
+        if (boxFoto) boxFoto.innerHTML = `<span style="font-size:10px; color:#888;">FOTO</span>`;
+        renderizarCaixas();
+      }
+
+      function confirmar() {
+        const etapa = ETAPAS[etapaAtual];
+        if (emBranco || numeroAtual.length === etapa.digitos) {
+          vibrar(60);
+
+          const cand = etapa.candidatos[numeroAtual];
+          votosRegistrados.push({
+            cargo: etapa.cargo,
+            numero: numeroAtual || "BRANCO",
+            candidato: cand ? cand.nome : (emBranco ? "BRANCO" : "NULO")
+          });
+
+          track("urna_voto_confirmado", {
+            cargo: etapa.cargo,
+            tipo: emBranco ? "BRANCO" : (cand ? "VALIDO" : "NULO"),
+            candidato: cand ? cand.nome : (emBranco ? "BRANCO" : "NULO"),
+            numero: numeroAtual || "BRANCO"
+          });
+
+          if (etapaAtual === ETAPAS.length - 1) {
+            somUrnaFim();
+            if (painelVoto) painelVoto.style.display = "none";
+            if (telaGravando) telaGravando.style.display = "flex";
+
+            setTimeout(() => {
+              if (telaGravando) telaGravando.style.display = "none";
+              if (telaFim) telaFim.style.display = "flex";
+            }, 800);
+          } else {
+            somConfirmaParcial();
+            etapaAtual++;
+            carregarEtapa();
+          }
+        }
+      }
+
+      window.reiniciarTudo = function() {
+        etapaAtual = 0;
+        votosRegistrados.length = 0;
+        if (telaFim) telaFim.style.display = "none";
+        if (painelVoto) painelVoto.style.display = "flex";
+        carregarEtapa();
+      };
+
+      carregarEtapa();
+
+      // Listeners do Teclado
+      document.querySelectorAll(".btn-num").forEach(btn => {
+        btn.addEventListener("click", () => digitar(btn.dataset.tecla));
+      });
+
+      const btnBranco = document.querySelector(".btn-branco");
+      const btnCorrige = document.querySelector(".btn-corrige");
+      const btnConfirma = document.querySelector(".btn-confirma");
+
+      if (btnBranco) btnBranco.addEventListener("click", votarBranco);
+      if (btnCorrige) btnCorrige.addEventListener("click", corrigir);
+      if (btnConfirma) btnConfirma.addEventListener("click", confirmar);
+
+      if (btnCtaSite) {
+        btnCtaSite.addEventListener("click", function() {
+          track("urna_click_site_oficial", { destino: this.href });
+        });
+      }
+
+      if (linkPropostas) {
+        linkPropostas.addEventListener("click", function() {
+          track("urna_click_propostas", { destino: this.href });
+        });
+      }
+
+      if (btnZap) {
+        btnZap.addEventListener("click", function() {
+          track("urna_click_compartilhar_whatsapp");
+        });
+      }
+    });
+  </script>
+</body>
+</html>
